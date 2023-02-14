@@ -100,6 +100,7 @@ const productDetailCrawler = async (browser, crawlerData) => {
     const promotionType = crawlerData[i].promotionType;
     const storeName = $(storeNameSelector).attr('alt') || $(storeNameNotImageSelector).text() || $(storeNameCase3).attr('alt');
     delete crawlerData[i].promotionType;
+    const url = crawlerData[i].url;
     delete crawlerData[i].url;
 
     crawlerData[i] = {
@@ -108,7 +109,7 @@ const productDetailCrawler = async (browser, crawlerData) => {
       평점: sliceTextToBack(productGrade, '/'),
       옵션: promotionType,
       마켓명: storeName,
-      URL: crawlerData[i].url,
+      URL: url,
     }
 
     await page.close();
@@ -156,7 +157,7 @@ const crawler = async () => {
 
   const csv = jsonToCsv(crawlerJsonData);
 
-  fs.writeFileSync(`스마트스토어${new Date().getDate()}.csv`, csv);
+  fs.writeFileSync(`./스마트스토어${new Date().getDate()}.csv`, '\uFEFF' + csv);
   await page.close();
   await browser.close();
 }
