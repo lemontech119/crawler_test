@@ -27,8 +27,13 @@ const jsonToCsv = (jsonData) => {
   return csvString;
 }
 
+const delay = (ms) => {
+  return new Promise( resolve => setTimeout(resolve, ms) );
+};
+
 module.exports = {
   sliceTextToFront,
   sliceTextToBack,
   jsonToCsv,
+  delay,
 }
