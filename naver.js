@@ -1,6 +1,8 @@
 const puppeteer = require('puppeteer');
 const cheerio = require('cheerio');
 const fs = require('fs');
+const util = require('./util');
+
 const width = 1024;
 const height = 1600;
 
@@ -22,35 +24,6 @@ const pageToBottom = async (page) => {
   );
 };
 
-const jsonToCsv = (jsonData) => {
-
-  const jsonArray = jsonData;
-
-  let csvString = '';
-
-  const titles = Object.keys(jsonArray[0]);
-
-  titles.forEach((title, index)=>{
-    csvString += (index !== titles.length-1 ? `${title},` : `${title}\r\n`);
-  });
-  jsonArray.forEach((content, index)=>{
-      let row = '';
-      for(let title in content){
-          row += (row === '' ? `${content[title]}` : `,${content[title]}`);
-      }
-      csvString += (index !== jsonArray.length-1 ? `${row}\r\n`: `${row}`);
-  })
-  return csvString;
-}
-
-const sliceTextToFront = (text, sliceText) => {
-  return text.slice(text.indexOf(sliceText) + sliceText.length, text.length);
-}
-
-const sliceTextToBack = (text, sliceText) => {
-  return text.slice(text, text.indexOf(sliceText));
-}
-
 const getDataToPage = ($, element) => {
   // const promotionProductDataSelector = 'div.productCard_information__YEkjB';
   const promotionProductTitleSelector = 'div.productCard_information__YEkjB > strong.productCard_title__aMA_D';
@@ -68,10 +41,10 @@ const getDataToPage = ($, element) => {
   const subInformation = $(element).find(promotionProductSubInformation).text().replace(',', '');
 
   return {
-    상품명: sliceTextToFront(title, deliveryType),
-    '구경자 수': sliceTextToBack(subInformation, '명이 구경했어요.'),
-    가격: sliceTextToBack(price, '원'),
-    할인율: sliceTextToFront(discount, '할인율'),
+    상품명: util.sliceTextToFront(title, deliveryType),
+    '구경자 수': util.sliceTextToBack(subInformation, '명이 구경했어요.'),
+    가격: util.sliceTextToBack(price, '원'),
+    할인율: util.sliceTextToFront(discount, '할인율'),
     promotionType: promotionType,
   }
 }
@@ -106,7 +79,7 @@ const productDetailCrawler = async (browser, crawlerData) => {
     crawlerData[i] = {
       ...crawlerData[i],
       리뷰수: productReview,
-      평점: sliceTextToBack(productGrade, '/'),
+      평점: util.sliceTextToBack(productGrade, '/'),
       옵션: promotionType,
       마켓명: storeName,
       URL: url,
@@ -155,9 +128,9 @@ const crawler = async () => {
   // 상품 상세 페이지 크롤링
   const crawlerJsonData = await productDetailCrawler(browser, crawlerData);
 
-  const csv = jsonToCsv(crawlerJsonData);
+  const csv = util.jsonToCsv(crawlerJsonData);
 
-  fs.writeFileSync(`./스마트스토어${new Date().getDate()}.csv`, '\uFEFF' + csv);
+  fs.writeFileSync(`./csv/스마트스토어${new Date().getDate()}.csv`, '\uFEFF' + csv);
   await page.close();
   await browser.close();
 }
