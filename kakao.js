@@ -17,8 +17,15 @@ const productDetailCrawler = async (browser, crawlerData) => {
     const content = await page.content();
     const $ = cheerio.load(content);
 
-    const productReviewSelector = '#mArticle > div > div.product_section > div.info_photo > div.split_info > fu-view-star-rating > div > a > span.desc_txt';
-    const productGradeSelector = '#mArticle > div > div.product_section > div.info_photo > div.split_info > fu-view-star-rating > div > a > span.area_stargage > span.area_star';
+    const productReviewSelector = '#mArticle > div > div.product_section > div.info_photo.type_talkdeal > div.split_info > fu-view-star-rating > div > a > span.desc_txt';
+    const productGradeSelector = '#mArticle > div > div.product_section > div.info_photo.type_talkdeal > div.split_info > fu-view-star-rating > div > a > span.area_stargage > span.area_star';
+    const titleSelector = '#kakaoHead > fu-view-talkstore-intro > div > a:nth-child(1) > strong';
+    const titleImgSelector = '#kakaoHead > fu-view-talkstore-intro > div > a:nth-child(1) > strong > img';
+
+    const reviewText = $(productReviewSelector).text().replace(',', '');
+    const review = util.sliceTextToFront(util.sliceTextToBack(reviewText, '건'), '리뷰 ');
+    const title = $(titleSelector).text().replace(',', '') || $(titleImgSelector).attr('alt').replace(',', '');
+
     let gradeNum = 0;
     $(productGradeSelector).each((index, element) => {
       if (index === 3) {
@@ -30,10 +37,22 @@ const productDetailCrawler = async (browser, crawlerData) => {
           gradeNum += 0.5;
         }
       } else {
-        grandeNum += 1;
+        gradeNum += 1;
       }
     });
+    const url = crawlerData[i].url;
+    delete crawlerData[i].url;
+
+    crawlerData[i] = {
+      ...crawlerData[i],
+      리뷰수: review ? Number(review) : 0,
+      평점: gradeNum ? Number(gradeNum) : 0,
+      마켓명: title,
+      URL: url,
+    }
   }
+
+  return crawlerData;
 };
 
 const getDataToPageByKakao = ($, element) => {
@@ -46,10 +65,10 @@ const getDataToPageByKakao = ($, element) => {
   const productUrl = $(element).find('a').attr('href');
 
   return {
-    상품명: $(element).find(promotionProductTitleSelector).text(),
-    구매자수: $(element).find(promotionProductBuyerNumSelector).text(),
-    톡딜가: $(element).find(promotionProductEventPriceSelector).text(),
-    정상가: $(element).find(promotionProductPriceSelector).text(),
+    상품명: $(element).find(promotionProductTitleSelector).text().replace(',', ''),
+    구매자수: util.sliceTextToBack($(element).find(promotionProductBuyerNumSelector).text().replace(',', ''), '명이 구매했어요'),
+    톡딜가: $(element).find(promotionProductEventPriceSelector).text().replace(',', ''),
+    정상가: $(element).find(promotionProductPriceSelector).text().replace(',', ''),
     url: productUrl,
   }
 }
@@ -71,21 +90,25 @@ const crawler = async () => {
 
   await util.delay(1000);
 
-  const promotionProductsSelector = '#mArticle > div > div.layout_split > div > div > ul > li.ng-star-inserted';
-
+  const promotionProductsSelector = '#mArticle > div > div.layout_split > div > div > cu-infinite-scroll > div > ul > li';
+  // #mArticle > div > div.layout_split > div > div > cu-infinite-scroll > div > ul > li
   const content = await page.content();
   const $ = cheerio.load(content);
 
   const crawlerData = [];
 
   $(promotionProductsSelector).each(async (index, element) => {
-    if (index < 5) {
+    if (index < 3) {
       const data = getDataToPageByKakao($, element);
       crawlerData.push(data);
     }
   });
 
-  await productDetailCrawler(browser, crawlerData);
+  const crawlerJsonData = await productDetailCrawler(browser, crawlerData);
+
+  const csv = util.jsonToCsv(crawlerJsonData);
+
+  fs.writeFileSync(`./csv/톡딜${new Date().getDate()}.csv`, '\uFEFF' + csv);
 
   await page.close();
   await browser.close();
