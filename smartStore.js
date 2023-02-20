@@ -7,7 +7,7 @@ const util = require('./util');
 const width = 1024;
 const height = 1600;
 
-const pageNum = "10";
+const pageNum = "1";
 
 const pageToBottom = async (page) => {
   await page.evaluate(
@@ -71,43 +71,48 @@ const crawler = async () => {
   });
   const page = await browser.newPage();
   const crawlerData = [];
-  const url = 'https://search.shopping.naver.com/search/all?frm=NVSHCHK&origQuery=%EB%9E%9C%EC%84%A0%EC%8B%9D%EB%8B%B9&pagingSize=40&productSet=checkout&query=%EB%9E%9C%EC%84%A0%EC%8B%9D%EB%8B%B9&sort=rel&timestamp=&viewType=list&pagingIndex=';
-  await page.goto(url + pageNum, {
-    waitUntil: 'load',
-    timeout: 0,
-  });
-  await util.delay(2000);
+  for (let i = 1; i < 7; i++){
+    const url = 'https://search.shopping.naver.com/search/all?catId=50000006&frm=NVSHCHK&origQuery=%ED%94%84%EB%A0%88%EC%8B%9C%EB%A9%98%ED%86%A0&pagingSize=40&productSet=checkout&query=%ED%94%84%EB%A0%88%EC%8B%9C%EB%A9%98%ED%86%A0&sort=rel&timestamp=&viewType=list&pagingIndex=';
+    await page.goto(url + String(i), {
+      waitUntil: 'load',
+      timeout: 0,
+    });
+    await util.delay(2000);
 
-  await pageToBottom(page);
-  const content = await page.content();
-  const $ = cheerio.load(content);
-  const productSelector = '#__next > div > div.style_container__UxP6u > div > div.style_content_wrap__Cdqnl > div.style_content__xWg5l > ul > div > div';
+    await pageToBottom(page);
+    const content = await page.content();
+    const $ = cheerio.load(content);
+    const productSelector = '#__next > div > div.style_container__UxP6u > div > div.style_content_wrap__Cdqnl > div.style_content__xWg5l > ul > div > div';
 
-  let count = 0;
-  $(productSelector).each(async (index, element) => {
-    const ad = $(element).find('button.ad_ad_stk__pBe5A').text();
-    const productName = $(element).find('div.basicList_title__VfX3c').text();
-    const smartStore = $(element).find('a.basicList_mall__BC5Xu').text();
-    const pick = $(element).find('span.basicList_etc__LSkN_ > a.basicList_btn_zzim__YCRGy > span.basicList_text__gCaiD').text();
+    let count = 0;
+    $(productSelector).each(async (index, element) => {
+      const ad = $(element).find('button.ad_ad_stk__pBe5A').text();
+      const productName = $(element).find('div.basicList_title__VfX3c').text();
+      const smartStore = $(element).find('a.basicList_mall__BC5Xu').text();
+      const pick = $(element).find('span.basicList_etc__LSkN_ > a.basicList_btn_zzim__YCRGy > span.basicList_text__gCaiD').text();
+      const buyData = $(element).find('div.basicList_info_area__TWvzp > div.basicList_etc_box__5lkgg > a:nth-child(2)').text();
+      const buyCount = buyData.includes('구매건수') ? util.sliceTextToFront(buyData, '구매건수').replace(',', '') : 0;
 
+      if (smartStore === '프레시멘토') {
+        count += 1;
+        const basicListSelector = 'span.basicList_etc__LSkN_';
+        const createdAt = $(element).find(basicListSelector).first().text();
 
-    if (smartStore === '랜선식당') {
-      count += 1;
-      const basicListSelector = 'span.basicList_etc__LSkN_';
-      const createdAt = $(element).find(basicListSelector).first().text();
-
-      crawlerData.push({
-        name: productName.replace(',', ''),
-        ad: !!ad,
-        createdAt: util.sliceTextToFront(createdAt, '등록일 '),
-        pick: util.sliceTextToFront(pick, '찜하기'),
-        url: $(element).find('a.thumbnail_thumb__Bxb6Z').attr('href'),
-      });
-    }
-  });
+        crawlerData.push({
+          name: productName.replace(',', ''),
+          ad: !!ad,
+          buyCount: buyCount,
+          createdAt: util.sliceTextToFront(createdAt, '등록일 '),
+          pick: util.sliceTextToFront(pick, '찜하기'),
+          url: $(element).find('a.thumbnail_thumb__Bxb6Z').attr('href'),
+        });
+      }
+    });  
+  }
+  
   const data = await productDetailCrawler(browser, crawlerData);
   const csv = util.jsonToCsv(data);
-  fs.writeFileSync(`./csv/랜선식당${pageNum}.csv`, '\uFEFF' + csv);
+  fs.writeFileSync(`./csv/프레시멘토 구매수.csv`, '\uFEFF' + csv);
   await page.close();
   await browser.close();
 };
