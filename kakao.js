@@ -24,7 +24,7 @@ const productDetailCrawler = async (browser, crawlerData) => {
 
     const reviewText = $(productReviewSelector).text().replace(',', '');
     const review = util.sliceTextToFront(util.sliceTextToBack(reviewText, '건'), '리뷰 ');
-    const title = $(titleSelector).text().replace(',', '') || $(titleImgSelector).attr('alt').replace(',', '');
+    const title = $(titleSelector).text().replace(',', '') || $(titleImgSelector).attr('alt');
 
     let gradeNum = 0;
     $(productGradeSelector).each((index, element) => {
@@ -98,7 +98,7 @@ const crawler = async () => {
   const crawlerData = [];
 
   $(promotionProductsSelector).each(async (index, element) => {
-    if (index < 3) {
+    if (index < 20) {
       const data = getDataToPageByKakao($, element);
       crawlerData.push(data);
     }
